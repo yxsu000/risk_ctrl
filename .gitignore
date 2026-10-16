@@ -1,0 +1,55 @@
+# === 密钥：绝对不提交 ===
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# === Python ===
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# === 虚拟环境 ===
+.venv/
+venv/
+env/
+
+# === LLM 响应缓存（体积大，本地保留即可，见设计文档 §7.4）===
+eval/cache/
+
+# === 抓取中间产物 / 临时文件 ===
+data/corpus/_raw_html/
+*.tmp
+*.log
+tmp/
+
+# === 数据文件（非本项目语料的大型二进制）===
+*.sqlite
+*.sqlite3
+*.db
+*.zip
+*.tar.gz
+
+# === macOS ===
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# === 求职私有材料：简历话术、面试问答、初版设想（含未验证数字）===
+docs/private/
+B端智能风控v1.0.md
+
+# === 编辑器 / AI 工具本地配置 ===
+.idea/
+.vscode/
+.zcode/
+.claude/
+.qoder/
