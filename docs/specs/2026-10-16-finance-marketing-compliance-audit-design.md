@@ -772,78 +772,108 @@ Markdown 报告含：文案摘要、文档级结论、逐条 finding（含 span 
 
 ---
 
-## 9. 技术选型（基于 2026-10-16 实测环境）
+## 9. 技术选型（环境已于 2026-10-16 建成并验收）
 
-> **重要前提（2026-10-16 用户确认后修订）**：本项目将**新建专用 conda 环境**，不使用 Anaconda base。
-> 因此下表中标注的 base 环境实测版本号**仅作版本参考**，不代表新环境已具备这些包——
-> **新环境是空的，所有 Python 依赖都需要重新安装。** 真正已就绪的只有 conda 本身、git、Node 与磁盘/端口条件。
+> **状态更新（2026-10-16）**：conda 环境 `risk_ctrl` 已创建，依赖已安装并逐项验收通过。
+> 下表版本号为**该环境内实测值**，不是 base 环境的值。版本已由 `requirements.lock`（`pip freeze`，56 个包）锁定。
+>
+> **一处需要注意的版本跳跃**：`openai` 装到 **3.36.1**、`pandas` 装到 **3.0.6**，都比 Anaconda base 里的版本（2.9.0 / 2.2.3）高一个大版本。
+> 已实测确认本项目要用的接口全部健在：`OpenAI(base_url=, api_key=, timeout=, max_retries=)`、
+> `client.chat.completions.create(messages=, model=, temperature=, response_format=)`、`DataFrame.groupby().sum()`。
+> **但后续若参考网上 openai 2.x 的示例代码，需注意 3.x 的差异。**
 
-| 层 | 选型 | 理由 | 状态 |
+| 层 | 选型 | 理由 | 状态（实测） |
 |---|---|---|---|
-| Python 运行时 | 专用 conda 环境，**建议 `python=3.12`** | Anaconda 已安装（base 实测 3.13.5），Python 本体无需另装。**选 3.12 而非跟随 base 的 3.13**：3.12 是当前生态兼容性最成熟的版本，pydantic / streamlit / jieba / pdfplumber 均有一线 wheel 支持；3.13 虽可用，但 PDF 解析与部分科学计算包的 wheel 覆盖仍滞后，容易在 P1 抓取阶段踩坑 | ⚠️ 环境待建 |
-| 环境隔离 | **conda 专用环境**（`conda create -n mingjing python=3.12`） | 用户指定方案。隔离于 base，避免版本冲突；`conda activate` 后 `python` 解析明确，**顺带消除了 base(3.13) 与系统 `/usr/bin/python3`(3.9.6) 的 PATH 歧义**——这是本方案优于 venv 的一点 | ⚠️ 待建 |
-| 包管理 | 环境内**统一用 `pip`**，不用 `conda install` | 混用 conda/pip 装同一批包容易解出冲突依赖。本项目全部依赖在 PyPI 上都有 wheel，纯 pip 最省心；`requirements.txt` 锁版本 | — |
-| 结构化契约 | `pydantic` ≥2.10 + `pydantic-settings` | 审核结果 Schema（§5.4）、LLM 输出校验（§6.2）、配置管理 | ⚠️ 待装（base 实测 2.10.3 / 2.6.1） |
-| LLM 调用 | `openai` SDK ≥2.9 + OpenAI 兼容端点 | DeepSeek / 通义 / 其他兼容端点只需改 `base_url` + `api_key`，SDK 层无差异 | ⚠️ 待装（base 实测 2.9.0）；**⚠️ 缺 key，见 RK1** |
-| UI | `streamlit` ≥1.45 | 零前端搭建成本，足以支撑 §8.1 合规专员工作台的全部交互 | ⚠️ 待装（base 实测 1.45.1） |
-| 数据处理 | `pandas` ≥2.2 | 评测统计、指标表生成（§7） | ⚠️ 待装（base 实测 2.2.3） |
-| HTTP 抓取 | `httpx` ≥0.28 | 处罚决定书抓取（§4.6、scripts/） | ⚠️ 待装（base 实测 0.28.1） |
-| 模板 | `Jinja2` ≥3.1 | 提示词模板分段管理（§6.2）、Markdown 报告生成（§8.4） | ⚠️ 待装（base 实测 3.1.6） |
-| YAML 解析 | `PyYAML` | 加载 `lexicon.yaml`（§6.1 要求词库热加载、改词不改码） | ⚠️ 待装（**原表遗漏，本次补入**） |
-| 中文分词 | `jieba` | BM25 检索需要（§6.3 方案②） | ⚠️ 待装（纯 Python，轻量） |
-| 测试 | `pytest` | `tests/` 目录；规则引擎与融合逻辑必须有单测 | ⚠️ 待装（**原表遗漏，本次补入**） |
-| PDF 解析 | `pdfplumber`（首选）或 `pypdf` | 若处罚决定书为文本型 PDF | ⚠️ 待装，**取决于 §4.6 试探结果** |
+| Python 运行时 | conda 环境 `risk_ctrl`，**Python 3.12.15** | 选 3.12 而非跟随 base 的 3.13：3.12 生态 wheel 覆盖最成熟，避免 P1 抓取阶段被 PDF 解析类包卡住 | ✅ `/opt/anaconda3/envs/risk_ctrl/bin/python` |
+| 环境隔离 | **conda 专用环境 `risk_ctrl`** | 用户指定，与仓库同名，也符合既有习惯（`stock_analysis` / `credit_md` / `fin_model` 均按项目命名）。`conda activate` 后 `python` 解析明确，消除 base(3.13) 与系统 `/usr/bin/python3`(3.9.6) 的 PATH 歧义 | ✅ 已建，实测为空环境后安装 |
+| 包管理 | 环境内**统一用 `pip` 26.2.2**，不用 `conda install` | 混用 conda/pip 装同一批包容易解出冲突依赖。全部依赖在 PyPI 有 wheel，纯 pip 最省心 | ✅ `requirements.txt`（语义下限）+ `requirements.lock`（精确冻结） |
+| 结构化契约 | `pydantic` **2.14.1** + `pydantic-settings` **2.16.1** | 审核结果 Schema（§5.4）、LLM 输出校验（§6.2）、配置管理 | ✅ 实测：合法输入通过、`start:"x"` 被 `ValidationError` 拦截 |
+| LLM 调用 | `openai` **3.36.1** + OpenAI 兼容端点 | DeepSeek / 通义等兼容端点只需改 `base_url` + `api_key` | ✅ SDK 就绪；**⚠️ 仍需配置 `.env` 凭据** |
+| UI | `streamlit` **1.66.1** | 零前端搭建成本，足以支撑 §8.1 合规专员工作台全部交互 | ✅ |
+| 数据处理 | `pandas` **3.0.6** + `numpy` 2.5.4 + `pyarrow` 26.0.0 | 评测统计、指标表生成（§7） | ✅ 实测 groupby 正常 |
+| HTTP 抓取 | `httpx` **0.28.1** | 处罚决定书抓取（§4.6、scripts/） | ✅ |
+| 模板 | `Jinja2` **3.1.6** | 提示词模板分段管理（§6.2）、Markdown 报告生成（§8.4） | ✅ |
+| YAML 解析 | `PyYAML` **6.0.3** | 加载 `lexicon.yaml`（§6.1 词库热加载、改词不改码） | ✅ |
+| 中文分词 | `jieba` **0.42.1** | BM25 检索需要（§6.3 方案②） | ✅ **但见下方「jieba 使用约束」** |
+| 测试 | `pytest` **9.1.1** | `tests/`；规则引擎与融合逻辑必须有单测 | ✅ |
+| PDF 解析 | `pdfplumber`（首选）或 `pypdf` | 若处罚决定书为文本型 PDF | 🔒 **刻意推迟**，待 §4.6 试探结果（见 RK10） |
 | OCR | 暂不选型 | 若 §4.6 发现扫描件占比高再评估 | 🔒 决策门后再定 |
 | 向量库 | **默认不装** | 见 §6.3；仅 E5 对比实验需要时装 `chromadb` | 🔒 可选 |
-| Web API | **暂不做** | Engine 与 UI 已解耦（§5.2），未来加 FastAPI 约 30 行 | 🔒 非目标 |
-| 存储 | JSONL / YAML 文件 + git | 数据量小，无需数据库。纯文本便于 diff、便于 code review、便于导出 | ✅ 无需安装 |
-| 版本控制 | git 2.51.2（**仓库待初始化**） | 数据集打 tag 冻结、提示词版本绑定 commit hash 都依赖它（§7.4） | ⚠️ 仓库待建，git 本体已就绪 |
-| Docker | **不使用** | 实测 daemon 未运行，且本项目无需容器化 | — |
-| Node | v22.22.1 | 本项目用不到；仅在未来若要换 React 前端时才需要 | ✅ 已就绪（非必需） |
+| Web API | **暂不做** | Engine 与 UI 已解耦（§5.2），未来加 FastAPI 约 30 行 | 🔒 非目标（注：`uvicorn` 0.54.0 / `starlette` 1.9.0 已随 streamlit 装入，届时可直接用） |
+| 存储 | JSONL / YAML 文件 + git | 数据量小，无需数据库。纯文本便于 diff、便于 review、便于导出 | ✅ 无需安装 |
+| 版本控制 | git 2.51.2 | 数据集打 tag 冻结、提示词版本绑定 commit hash（§7.4） | ✅ **仓库已初始化并推送**，远端 `git@github.com:yxsu000/risk_ctrl.git`，分支 `main` |
+| Docker | **不使用** | 实测 daemon 未运行，本项目无需容器化 | — |
+| Node | v22.22.1 | 本项目用不到；仅未来换 React 前端时才需要 | ✅ 已就绪（非必需） |
 | 端口 | 8000 / 8899 / 5173 实测空闲 | Streamlit 默认 8501，同样空闲 | ✅ |
-| 磁盘 | 252 GiB 可用 | 语料与缓存占用预计 < 1 GB | ✅ |
+| 磁盘 | 252 GiB 可用 | 语料与缓存预计 < 1 GB | ✅ |
 
-### 9.1 P0 环境搭建步骤
+#### jieba 使用约束（2026-10-16 实测发现，实现时必读）
+
+实测 `jieba.lcut("本基金预期年化收益率可达8%，本金无忧")` 的结果是：
+
+```
+本 / 基金 / 预期 / 年化 / 收益率 / 可达 / 8% / ， / 本金 / 无忧
+```
+
+**"预期年化收益率"被切成了三段。** 这意味着：
+
+- **规则引擎（§6.1）的 T1/T3/T4 词条匹配，必须对原始字符串做子串或正则匹配，绝不能用 jieba 分词后的 token 去比对。** 否则"预期年化收益率""坐享财富增长""业绩稳健"这类多字词条会全部漏掉——而这些恰恰是 T1 硬性红线里最重要的一批。
+- **jieba 只用于 §6.3 方案②的 BM25 检索分词**，那里需要的是词级切分来做相关性打分，用途完全不同。
+- 两件事不能共用一套切分逻辑。这条约束应在 `RuleEngine` 的单测里用一个含"预期年化收益率"的用例钉住，防止后续重构时被"优化"掉。
+- 若确实需要 jieba 正确切出这些术语，可用 `jieba.add_word()` 注入自定义词典——但**规则匹配不应该依赖这一步**，子串匹配更简单也更可靠。
+
+### 9.1 P0 环境搭建步骤（步骤 1–4 已于 2026-10-16 执行完毕）
 
 ```bash
-# 1. 建专用环境（3.12，理由见上表）
-conda create -n mingjing python=3.12 -y
-conda activate mingjing
+# 1. 建专用环境 ✅ 已执行
+conda create -n risk_ctrl python=3.12 -y
+conda activate risk_ctrl
 
-# 2. 确认解析到的是新环境，不是 base 也不是系统 3.9.6
-which python          # 期望：/opt/anaconda3/envs/mingjing/bin/python
-python -V             # 期望：Python 3.12.x
+# 2. 确认解析到的是新环境，不是 base 也不是系统 3.9.6 ✅ 已验证
+which python          # 实测：/opt/anaconda3/envs/risk_ctrl/bin/python
+python -V             # 实测：Python 3.12.15
 
-# 3. 装依赖（统一走 pip）
+# 3. 装依赖（统一走 pip）✅ 已执行
 cd ~/Documents/risk_ctrl
 pip install -r requirements.txt
 
-# 4. 验收：核心包可导入
+# 4. 验收：核心包可导入 + 关键接口可用 ✅ 已通过
 python -c "import pydantic, openai, streamlit, pandas, httpx, yaml, jieba; print('OK')"
+#   额外实测确认：
+#   - openai 3.36.1 仍支持 OpenAI(base_url=, api_key=, timeout=, max_retries=)
+#     与 client.chat.completions.create(messages=, model=, temperature=, response_format=)
+#   - pydantic 2.14.1 对非法类型抛 ValidationError（结构化输出校验可用）
+#   - pandas 3.0.6 groupby 正常；jieba 0.42.1 中文分词正常
 
-# 5. 验收：LLM 端点连通（需先配 .env，见开放项 2）
+# 5. 验收：LLM 端点连通 ⬜ 待执行（需先配 .env）
 python scripts/smoke_llm.py    # 一次最小调用，打印 model 名与 token 用量
 ```
 
-`requirements.txt` 初版（版本以 P0 实际安装成功后 `pip freeze` 锁定为准）：
+**依赖清单采用两文件策略：**
+
+- `requirements.txt` — 语义化下限（`>=`），表达意图、便于阅读与升级
+- `requirements.lock` — `pip freeze` 精确冻结（实测 56 个包），保证 §7.4 要求的可复现性
+
+`requirements.txt` 当前内容：
 
 ```
-pydantic>=2.10
-pydantic-settings>=2.6
-openai>=2.9
-streamlit>=1.45
-pandas>=2.2
-httpx>=0.28
-Jinja2>=3.1
-PyYAML>=6.0
-jieba>=0.42
-pytest>=8.0
-# 以下待 §4.6 抓取试探后再决定是否启用
-# pdfplumber>=0.11
-# chromadb>=0.5      # 仅 E5 向量检索对比实验需要
+pydantic>=2.10          # 实装 2.14.1
+pydantic-settings>=2.6  # 实装 2.16.1
+openai>=2.9             # 实装 3.36.1  ← 跨大版本，见上方注意
+streamlit>=1.45         # 实装 1.66.1
+pandas>=2.2             # 实装 3.0.6   ← 跨大版本
+httpx>=0.28             # 实装 0.28.1
+Jinja2>=3.1             # 实装 3.1.6
+PyYAML>=6.0             # 实装 6.0.3
+jieba>=0.42             # 实装 0.42.1
+pytest>=8.0             # 实装 9.1.1
+
+# 刻意推迟，不在 P0 安装：
+# pdfplumber>=0.11   待 §4.6 试探确认处罚决定书为文本型 PDF 后再装（见 RK10）
+# chromadb>=0.5      仅 §7.3 的 E5 向量检索对比实验需要（见 §6.3）
 ```
 
-> **`.env` 只提交 `.env.example`（仅变量名），真实 key 必须进 `.gitignore`。** 仓库计划公开到 GitHub，这一条是硬要求。
+> **`.env` 只提交 `.env.example`（仅变量名），真实 key 必须留在 `.gitignore` 中。仓库已是公开状态（实测 `"private": false`），这一条是硬要求。** 当前 `.gitignore` 已包含 `.env` 与 `.env.*`（`!.env.example` 例外）。
 
 ### 9.2 目录结构
 
@@ -866,7 +896,7 @@ risk_ctrl/
 │       ├── eval_v1.jsonl          # 主评测集（打 tag 冻结）
 │       ├── disputed.jsonl         # 争议样本（不入主集）
 │       └── recheck/              # 自重标原始数据（§4.4 第二层）
-├── src/mingjing/
+├── src/mingjing/                  # 包名待定，取决于开放项 1；conda 环境名已定为 risk_ctrl
 │   ├── adapters/                  # ContentAdapter
 │   ├── kb/                        # RegulationKB, Retriever(接口+两实现)
 │   ├── rules/                     # RuleEngine
@@ -902,7 +932,7 @@ risk_ctrl/
 
 | 阶段 | 周 | 交付物 | 完成判据（可验证） |
 |---|---|---|---|
-| **P0 前置** | 第 0 周 | LLM API key；`git init`；**conda 专用环境 `mingjing`（python=3.12）+ 依赖安装**；`.gitignore` / `.env.example` / `requirements.txt`；目录骨架 | §9.1 五步全部通过：`which python` 指向新环境；`import` 验收语句通过；`scripts/smoke_llm.py` 一次最小 LLM 调用成功返回并打印 token 用量 |
+| **P0 前置** | 第 0 周 | ~~`git init`~~ ✅；~~conda 环境 + 依赖安装~~ ✅；~~`.gitignore` / `requirements.txt`~~ ✅；**待办：`.env` 配置 + smoke test、`.env.example`、目录骨架** | 已完成：环境 `risk_ctrl`(3.12.15)、10 个核心包验收通过、`requirements.lock` 冻结、仓库已推送。**剩余判据：`scripts/smoke_llm.py` 一次最小 LLM 调用成功返回并打印 token 用量** |
 | **P1 数据地基** | 1–2 周 | 法规原文存档；`clauses.jsonl`；`lexicon.yaml`；`exemptions.jsonl`；**§4.6 抓取试探报告**；评测集 v0.1（≥40 条） | 每个词条有 `source_clause_id`；试探报告给出明确的 go/adjust 决策 |
 | **P1.5 数据补全** | 2–3 周 | 评测集 v1.0（≥120 条，含对抗样本）；`label_source` 逐条标注完成 | 数据集打 tag `eval-v1.0`；`regulator` 类占比已统计。**自重标须间隔 ≥7 天，故其一致率数字在 P3 前补齐即可** |
 | **P2 引擎** | 3–4 周 | `RuleEngine`、`Retriever`(②)、`LLMReviewer`、`RiskAggregator`、`AuditOrchestrator`；CLI 可出结构化结果 | CLI 输入一段文案，输出符合 §5.4 Schema 的 JSON；条款引用后置校验生效 |
@@ -930,7 +960,7 @@ risk_ctrl/
 | RK4 | 评测结果不如预期（双轨未显著优于纯规则） | 中 | 中 | **如实报告并分析原因**。§7.6 预注册确保不会事后调口径。负面结果配合扎实的失败分析，面试价值不低于漂亮数字 |
 | RK5 | 法规更新导致知识库过期 | 低 | 低 | 每条 `fetched_at` + `raw_file` 存档；知识库热加载；README 写明法规版本截止日 |
 | RK6 | 用户 Python 经验不足导致进度卡壳 | 中 | 中 | Engine 与 UI 解耦、模块单一职责、契约集中在 `schemas.py`；每阶段有可验证的完成判据；AI 带搭分工明确 |
-| RK7 | conda 环境依赖冲突 / 与 base 混淆（误在 base 里装包，或 `python` 解析到系统 3.9.6） | 中 | 中 | P0 建专用环境 `mingjing`（python=3.12）；**环境内统一用 pip，不混用 conda install**；§9.1 第 2 步强制 `which python` 验收；`requirements.txt` 锁版本；README 首行写明 `conda activate mingjing` |
+| RK7 | conda 环境依赖冲突 / 与 base 混淆（误在 base 里装包，或 `python` 解析到系统 3.9.6） | **低（已缓解）** | 中 | 已建专用环境 `risk_ctrl`（Python 3.12.15）并验收；**环境内统一用 pip，不混用 conda install**；`requirements.txt` + `requirements.lock` 双文件锁版本；README 首行须写明 `conda activate risk_ctrl`。**残留风险：`openai` 实装 3.36.1 而网上示例多为 2.x，写代码时注意 API 差异** |
 | RK8 | 项目被误认为"抄了个敏感词过滤器" | 中 | 高 | §3.4 豁免规则库 + §6.3 检索选型论证 + §7.2 代价加权 + §7.5 失败案例，四处体现深度；演示时**主动先讲豁免逻辑**，把认知锚点从"过滤"拉到"语境判定" |
 | RK9 | 法律风险：项目输出被当作法律意见 | 低 | 高 | §5.4 免责声明强制出现在所有导出报告；§2.2 明确"不给出最终合规结论"；README 顶部声明本项目为学习性质的产品原型 |
 | RK10 | **新 conda 环境为空，依赖安装失败**（pdfplumber / pydantic-core 需编译，或网络导致 wheel 下载失败） | 中 | 低 | 全部依赖在 PyPI 有 3.12 wheel，正常无需编译；下载慢则配 pip 国内镜像源；**pdfplumber 推迟到 §4.6 试探确认需要 PDF 解析后再装**，避免 P0 被非必需依赖卡住 |
@@ -1021,12 +1051,14 @@ risk_ctrl/
 
 - ~~LLM API key~~ → 用户已在使用 DeepSeek 官方按量付费 API，RK1 解除。P0 只需把凭据配入本项目 `.env`。
 - ~~git 仓库初始化~~ → 已 `git init`（分支 `main`），远端 `git@github.com:yxsu000/risk_ctrl.git`，仓库为公开。
+- ~~conda 运行环境~~ → 已建 `risk_ctrl`（Python 3.12.15），10 个核心依赖装毕并逐项验收，版本由 `requirements.lock` 冻结。详见 §9 / §9.1。
+- ~~Python 版本选型~~ → 定为 3.12（非 base 的 3.13），理由见 §9 选型表。
 - ~~文档路径~~ → 定为 `docs/specs/`（偏离 skill 默认的 `docs/superpowers/specs/`，理由：公开仓库路径不宜含插件名）。
 - ~~求职材料是否公开~~ → 原 §12（简历表述）与 §13（面试问答）已拆出至 `docs/private/job-search-notes.md`，该目录被 `.gitignore` 排除。初版设想文档 `B端智能风控v1.0.md` 同样不入库（其中含未经验证的指标数字，与本文件 §0 原则冲突）。
 
 **仍待确认：**
 
-1. **项目命名**：明镜 / Mingjing 是否可以？（会影响 `src/mingjing/` 包名与 repo 名，早定省事）
+1. **项目命名**：明镜 / Mingjing 是否可以？**注意 conda 环境名已按你的指定定为 `risk_ctrl`（与仓库同名），此项只影响 `src/<包名>/` 和文档里的产品称呼**，改起来成本很低，但早定省事。
 2. **评测集规模**：按目标线 120 条推进，还是先做 §4.6 抓取试探再定？（建议后者——试探结果可能直接改变数据源优先级）
 3. **组合定位是否认同**（详见私有笔记）：特别是"本项目对外叙事避开'智能体'、不引入 Agent 框架"这一条。**若你希望本项目也走 Agent 叙事，§5 架构与 §6.2 需要重写**，这是本清单里唯一会引发大范围返工的项。
 4. **`stock_analysis` 是私有仓库**（实测 API 返回 404）。这意味着面试官看不到你的旗舰项目。需要决定：改为公开、保持私有并在面试时提供访问、还是简历上不附链接。**这件事的优先级不低于本项目本身**，因为它影响的是你已有的主要作品能否被验证。
